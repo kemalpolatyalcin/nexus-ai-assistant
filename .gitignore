@@ -1,0 +1,9 @@
+# Güvenlik (Şifreler)
+.env
+
+# Gereksiz Dosyalar
+venv/
+__pycache__/
+*.spec
+build/
+dist/

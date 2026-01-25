@@ -1,0 +1,8 @@
+customtkinter
+SpeechRecognition
+pygame
+edge-tts
+google-generativeai
+python-dotenv
+pyperclip
+pyaudio
