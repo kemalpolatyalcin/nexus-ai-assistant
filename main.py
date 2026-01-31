@@ -1,12 +1,7 @@
 """
-NEXUS AI - INTELLIGENT VOICE ASSISTANT
---------------------------------------
+NEXUS AI - Automation Voice Assistant
 Author: Kemal Polat Yalçın
-Version: 1.2 (Stable)
-Description: 
-    An autonomous voice assistant utilizing Google Gemini 1.5 Flash LLM 
-    for logic processing, EdgeTTS for synthesis, and a holographic 
-    UI built with CustomTkinter. Designed for software automation tasks.
+Version: 1.2
 """
 
 import warnings
@@ -26,60 +21,46 @@ import pyperclip
 import google.generativeai as genai
 import math
 import random
-import platform  # OS tespiti için eklendi
+import platform
 from datetime import datetime
 from dotenv import load_dotenv
 
-# --- INITIALIZATION ---
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - [%(levelname)s] - %(message)s')
-logger = logging.getLogger("NEXUS_SYSTEM")
+logger = logging.getLogger("NEXUS")
 
-# --- CROSS-PLATFORM SOUND COMPATIBILITY ---
-# Apple mühendisleri Mac kullanır, winsound Mac'te çalışmaz.
-# Bu blok kodun her işletim sisteminde çalışmasını sağlar.
 IS_WINDOWS = platform.system() == "Windows"
 if IS_WINDOWS:
     import winsound
 
-# --- CONFIGURATION ---
 class Config:
     APP_NAME = "NEXUS | SYSTEM V1.2"
-    
-    # SECURITY: Load Key from Environment Variable
     API_KEY = os.getenv("GOOGLE_API_KEY")
     
-    # Hardware Settings
+    # Audio Settings
     ENERGY_THRESHOLD = 300
     PAUSE_THRESHOLD = 0.8
     SOUND_OUTPUT = "response.mp3"
     
-    # UI Palette (Deep Space Theme)
+    # Theme Colors
     COLOR_BG = "#000000"        
-    COLOR_CORE = "#00f3ff"     # Neon Cyan
-    COLOR_ACTIVE = "#00ff41"   # Matrix Green
-    COLOR_BUSY = "#ff9500"     # Amber
-    COLOR_DIM = "#002233"      # Deep Blue
+    COLOR_CORE = "#00f3ff"
+    COLOR_ACTIVE = "#00ff41"
+    COLOR_BUSY = "#ff9500"
+    COLOR_DIM = "#002233"
     
-    # Validation
     if not API_KEY:
-        logger.critical("API Key missing in .env file! System halting.")
-        sys.exit("CRITICAL ERROR: Please add GOOGLE_API_KEY to .env file.")
+        logger.critical("API Key missing in environment variables.")
+        sys.exit(1)
 
-# --- SOUND FX MANAGER ---
 class SoundFX:
-    """Handles system feedback sounds compatible with multiple OS."""
+    """Handles cross-platform system feedback sounds."""
     
     @staticmethod
     def _beep(freq, duration):
-        """Cross-platform beep implementation."""
         if IS_WINDOWS:
             winsound.Beep(freq, duration)
-        else:
-            # macOS/Linux için alternatif ses (veya sessiz geçiş)
-            # Burada 'printf \a' veya basit bir wav dosyası kullanılabilir.
-            pass 
-
+            
     @staticmethod
     def play_boot():
         def _sound():
@@ -89,7 +70,7 @@ class SoundFX:
         threading.Thread(target=_sound).start()
 
     @staticmethod
-    def play_listening():
+    def play_ack():
         def _sound():
             SoundFX._beep(1000, 50)
             SoundFX._beep(1500, 50)
@@ -99,199 +80,148 @@ class SoundFX:
     def play_processing():
         def _sound():
             SoundFX._beep(400, 50)
-            SoundFX._beep(300, 50)
         threading.Thread(target=_sound).start()
 
-# --- AI BRAIN (LLM) ---
 class AIBrain:
-    """Handles interaction with Google Gemini 1.5 Flash Model."""
+    """Wrapper for Google Gemini 1.5 Flash API."""
     def __init__(self):
         try:
             genai.configure(api_key=Config.API_KEY)
             self.model = genai.GenerativeModel(
                 model_name='gemini-1.5-flash',
-                system_instruction=(
-                    "You are NEXUS, an elite AI assistant for a software automation engineer. "
-                    "Your responses must be concise, technical, and professional. "
-                    "Do not use asterisks (*) in your speech. "
-                    "If asked for code, explain the logic briefly first."
-                )
+                system_instruction="You are NEXUS, a technical assistant. Be concise. No markdown formatting in speech."
             )
             self.chat = self.model.start_chat(history=[])
-            logger.info("Neural Link Established.")
         except Exception as e:
-            logger.error(f"Brain Initialization Error: {e}")
+            logger.error(f"LLM Init Failed: {e}")
             self.model = None
 
     def ask(self, prompt, context=None):
-        if not self.model: return "Neural Link Offline. Please check API Key."
+        if not self.model: return "System offline."
         try:
-            full_prompt = f"Context Data: {context}\nUser Query: {prompt}" if context else prompt
+            full_prompt = f"Context: {context}\nQuery: {prompt}" if context else prompt
             response = self.chat.send_message(full_prompt)
-            # TTS motoru yıldız işaretlerini okumasın diye temizliyoruz
-            clean_text = response.text.replace("*", "").replace("#", "")
-            return clean_text
+            return response.text.replace("*", "").replace("#", "")
         except Exception as e:
             logger.error(f"Inference Error: {e}")
-            return "I encountered an error processing that request."
+            return "Processing error."
 
-# --- SKILL MANAGER ---
 class SkillManager:
-    """Executes system commands and tools based on intent."""
+    """Executes automation tasks and system commands."""
     def __init__(self, core):
         self.core = core
         self.brain = AIBrain()
     
     def execute(self, command):
         cmd = command.lower()
-        self.core.ui.set_hud_state("PROCESSING") 
+        self.core.ui.set_state("PROCESSING") 
         SoundFX.play_processing()
 
         try:
-            # 1. Clipboard / Code Analysis
-            if "clipboard" in cmd or "analyze code" in cmd:
+            if "clipboard" in cmd or "analyze" in cmd:
                 content = pyperclip.paste()
-                self.core.speak("Analyzing clipboard content...")
+                self.core.speak("Analyzing clipboard...")
                 response = self.brain.ask(cmd, context=content)
                 self.core.speak(response)
             
-            # 2. Open Development Environment
-            elif "open project" in cmd or "vs code" in cmd:
-                self.core.speak("Initializing VS Code environment.")
-                if IS_WINDOWS:
-                    os.system("code .")
-                else:
-                    os.system("open -a 'Visual Studio Code'") # macOS support
+            elif "vs code" in cmd or "code" in cmd:
+                self.core.speak("Opening VS Code.")
+                os.system("code ." if IS_WINDOWS else "open -a 'Visual Studio Code'")
             
-            # 3. System Terminal
-            elif "terminal" in cmd or "console" in cmd:
+            elif "terminal" in cmd:
                 self.core.speak("Launching terminal.")
-                if IS_WINDOWS:
-                    os.system("start cmd")
-                else:
-                    os.system("open -a Terminal") # macOS support
+                os.system("start cmd" if IS_WINDOWS else "open -a Terminal")
                 
-            # 4. Termination
-            elif "shutdown" in cmd or "dismiss" in cmd or "exit" in cmd:
-                self.core.speak("Terminating session. Goodbye, Sir.")
-                time.sleep(2)
+            elif "exit" in cmd or "shutdown" in cmd:
+                self.core.speak("Shutting down.")
+                time.sleep(1)
                 self.core.ui.quit_app()
                 
-            # 5. General LLM Query
             else:
                 response = self.brain.ask(cmd)
                 self.core.speak(response)
                 
         except Exception as e:
-            logger.error(f"Execution Error: {e}")
-            self.core.speak("An error occurred during command execution.")
+            logger.error(f"Skill Execution Failed: {e}")
+            self.core.speak("Command failed.")
 
-        self.core.ui.set_hud_state("IDLE")
+        self.core.ui.set_state("IDLE")
 
-# --- VOICE ENGINE (EARS & MOUTH) ---
 class VoiceEngine:
-    """Handles Audio I/O: Speech Recognition and Text-to-Speech."""
+    """Handles Speech-to-Text and Text-to-Speech operations."""
     def __init__(self):
         self.recognizer = sr.Recognizer()
         self.microphone = sr.Microphone()
         self.log_callback = lambda x: None 
         
-        # --- OPTIMIZATION: Calibrate Noise ONCE at startup ---
-        # This prevents the 1-second delay before every command.
+        # Initial noise calibration
         with self.microphone as source:
-            logger.info("Calibrating background noise... Please wait.")
             self.recognizer.adjust_for_ambient_noise(source, duration=1)
             self.recognizer.energy_threshold = Config.ENERGY_THRESHOLD
             self.recognizer.pause_threshold = Config.PAUSE_THRESHOLD
-        logger.info("Audio calibration complete.")
 
     def listen(self):
-        """Captures audio and performs STT (Speech-to-Text)."""
         with self.microphone as source:
             try:
-                # Dinleme süresini ve timeout'u optimize ettik
                 audio = self.recognizer.listen(source, timeout=None, phrase_time_limit=8)
-                text = self.recognizer.recognize_google(audio, language="en-US")
-                return text.lower()
-            except sr.WaitTimeoutError:
-                return None
-            except sr.UnknownValueError:
+                return self.recognizer.recognize_google(audio, language="en-US").lower()
+            except (sr.WaitTimeoutError, sr.UnknownValueError):
                 return None
             except Exception as e:
-                logger.error(f"Microphone Error: {e}")
+                logger.error(f"Mic Error: {e}")
                 return None
 
-    async def _generate_tts(self, text):
-        """Generates MP3 using EdgeTTS (Async)."""
+    async def _generate_audio(self, text):
         communicate = edge_tts.Communicate(text, "en-US-BrianNeural", rate="+5%")
         await communicate.save(Config.SOUND_OUTPUT)
 
     def speak(self, text):
-        """Plays the generated audio response."""
-        # UI Log Update
         threading.Thread(target=lambda: self.log_callback(text)).start()
-        
         try:
-            # Clean up old file
-            if os.path.exists(Config.SOUND_OUTPUT): 
-                os.remove(Config.SOUND_OUTPUT)
-                
-            # Generate Audio
-            asyncio.run(self._generate_tts(text[:500])) # Limit char count for speed
+            if os.path.exists(Config.SOUND_OUTPUT): os.remove(Config.SOUND_OUTPUT)
+            asyncio.run(self._generate_audio(text[:500]))
             
-            # Play Audio
             pygame.mixer.init()
             pygame.mixer.music.load(Config.SOUND_OUTPUT)
             pygame.mixer.music.play()
-            
             while pygame.mixer.music.get_busy():
                 pygame.time.Clock().tick(10)
-                
-            pygame.mixer.music.unload()
             pygame.mixer.quit()
         except Exception as e:
             logger.error(f"TTS Error: {e}")
 
-# --- CORE CONTROLLER ---
 class NexusCore:
-    """Central Logic Controller linking UI, Voice, and Skills."""
     def __init__(self, ui):
         self.ui = ui
         self.voice = VoiceEngine()
         self.voice.log_callback = self.ui.typewriter_log 
         self.skills = SkillManager(self)
-        self.triggers = ["nexus", "jarvis", "system", "computer", "hey"]
+        self.triggers = ["nexus", "system", "computer"]
         self.is_running = True
 
-    def run_loop(self):
-        """Main Logic Loop running in background thread."""
-        time.sleep(2) # Allow UI to render
+    def run(self):
+        time.sleep(2)
         SoundFX.play_boot()
-        self.ui.set_hud_state("IDLE")
-        self.voice.speak("System online. Awaiting instructions.")
+        self.ui.set_state("IDLE")
+        self.voice.speak("Online.")
         
         while self.is_running:
             input_text = self.voice.listen()
-            
-            if input_text:
-                # Trigger Word Detection
-                if any(t in input_text for t in self.triggers):
-                    SoundFX.play_listening()
-                    self.ui.set_hud_state("LISTENING")
-                    self.voice.speak("Yes?")
-                    
-                    command = self.voice.listen()
-                    if command:
-                        self.ui.update_log(f"> CMD: {command.upper()}")
-                        self.skills.execute(command)
-                    else:
-                        self.ui.set_hud_state("IDLE")
+            if input_text and any(t in input_text for t in self.triggers):
+                SoundFX.play_ack()
+                self.ui.set_state("LISTENING")
+                self.voice.speak("Yes?")
+                
+                command = self.voice.listen()
+                if command:
+                    self.ui.update_log(f"> {command.upper()}")
+                    self.skills.execute(command)
+                else:
+                    self.ui.set_state("IDLE")
 
-# --- VISUALS: PARTICLE SYSTEM ---
 class Particle:
-    """Physics-based particle system for UI aesthetics."""
-    def __init__(self, width, height):
-        self.w, self.h = width, height
+    def __init__(self, w, h):
+        self.w, self.h = w, h
         self.reset(first=True)
         
     def reset(self, first=False):
@@ -307,55 +237,41 @@ class Particle:
         self.y = cy + math.sin(self.angle) * self.dist
         self.size += 0.05 * speed_mult
         self.opacity = min(255, self.dist / 2)
-        
         if self.x < 0 or self.x > self.w or self.y < 0 or self.y > self.h:
             self.reset()
 
-# --- UI: HOLOGRAPHIC HUD ---
 class NexusUI(ctk.CTk):
-    """Main Application Window with Holographic Interface."""
     def __init__(self):
         super().__init__()
-        
-        # Window Configuration
-        self.WIDTH = 800
-        self.HEIGHT = 800
+        self.WIDTH, self.HEIGHT = 800, 800
         sw, sh = self.winfo_screenwidth(), self.winfo_screenheight()
         self.geometry(f"{self.WIDTH}x{self.HEIGHT}+{sw//2 - self.WIDTH//2}+{sh//2 - self.HEIGHT//2}")
         
-        self.overrideredirect(True) # Frameless Window
+        self.overrideredirect(True)
         self.configure(fg_color="black")
         self.attributes('-topmost', True)
-        self.attributes('-alpha', 0.0) # Start invisible for fade-in effect
+        self.attributes('-alpha', 0.0)
         
-        # Canvas Setup
         self.canvas = ctk.CTkCanvas(self, width=self.WIDTH, height=self.HEIGHT, bg="black", highlightthickness=0)
         self.canvas.pack(fill="both", expand=True)
         
-        # State Variables
-        self.hud_state = "BOOT" 
-        self.angle_1 = 0
-        self.angle_2 = 0
-        self.pulse = 0
-        self.log_text = "INITIALIZING CORE..."
+        self.state = "BOOT" 
+        self.angle_1 = self.angle_2 = self.pulse = 0
+        self.log_text = "INITIALIZING..."
         self.particles = [Particle(self.WIDTH, self.HEIGHT) for _ in range(80)]
         self.fade_alpha = 0.0
         
-        # Start Animation Loops
         self.animate()
         self.fade_in()
         
-        # Draggable Window Logic
         self.canvas.bind("<Button-1>", self.start_move)
         self.canvas.bind("<B1-Motion>", self.do_move)
 
     def start_move(self, event): self.x, self.y = event.x, event.y
     def do_move(self, event):
-        x = self.winfo_x() + (event.x - self.x)
-        y = self.winfo_y() + (event.y - self.y)
-        self.geometry(f"+{x}+{y}")
+        self.geometry(f"+{self.winfo_x() + (event.x - self.x)}+{self.winfo_y() + (event.y - self.y)}")
         
-    def set_hud_state(self, state): self.hud_state = state 
+    def set_state(self, state): self.state = state 
     def update_log(self, text): self.log_text = text
 
     def typewriter_log(self, text):
@@ -375,24 +291,19 @@ class NexusUI(ctk.CTk):
         self.canvas.delete("all")
         cx, cy = self.WIDTH // 2, self.HEIGHT // 2
         
-        # State Logic (Colors & Text)
-        if self.hud_state == "IDLE": 
-            color, warp, label = Config.COLOR_CORE, 1.0, "SYSTEM ONLINE"
-        elif self.hud_state == "LISTENING": 
-            color, warp, label = Config.COLOR_ACTIVE, 0.2, "LISTENING..."
-        elif self.hud_state == "PROCESSING": 
-            color, warp, label = Config.COLOR_BUSY, 4.0, "PROCESSING..."
-        else:
-            color, warp, label = Config.COLOR_DIM, 0.0, "SYSTEM BOOT"
+        if self.state == "IDLE": color, warp, label = Config.COLOR_CORE, 1.0, "ONLINE"
+        elif self.state == "LISTENING": color, warp, label = Config.COLOR_ACTIVE, 0.2, "LISTENING"
+        elif self.state == "PROCESSING": color, warp, label = Config.COLOR_BUSY, 4.0, "PROCESSING"
+        else: color, warp, label = Config.COLOR_DIM, 0.0, "BOOT"
 
-        # 1. Draw Particles (Starfield)
+        # Particles
         for p in self.particles:
             p.update(warp, cx, cy)
-            hex_color = f"#{int(p.opacity):02x}{int(p.opacity):02x}{int(p.opacity):02x}"
-            if hex_color != "#000000":
-                self.canvas.create_oval(p.x-p.size, p.y-p.size, p.x+p.size, p.y+p.size, fill=hex_color, outline="")
+            hex_c = f"#{int(p.opacity):02x}{int(p.opacity):02x}{int(p.opacity):02x}"
+            if hex_c != "#000000":
+                self.canvas.create_oval(p.x-p.size, p.y-p.size, p.x+p.size, p.y+p.size, fill=hex_c, outline="")
 
-        # 2. Draw HUD Elements (Rings & Core)
+        # HUD Rings
         r1 = 300
         self.canvas.create_oval(cx-r1, cy-r1, cx+r1, cy+r1, outline=Config.COLOR_DIM, width=1)
         for i in range(0, 360, 60):
@@ -404,16 +315,9 @@ class NexusUI(ctk.CTk):
         pulse_r = 60 + (math.sin(self.pulse) * 10)
         self.canvas.create_oval(cx-pulse_r, cy-pulse_r, cx+pulse_r, cy+pulse_r, outline=color, width=2)
         
-        # 3. Draw Text
+        # Labels
         self.canvas.create_text(cx, cy-350, text=label, fill=color, font=("Consolas", 14, "bold"))
         self.canvas.create_text(cx, cy+350, text=self.log_text, fill="white", font=("Consolas", 12), width=600, justify="center")
-
-        # 4. Targeting Brackets
-        b_off, b_len = 320, 50
-        self.canvas.create_line(cx-b_off, cy-b_off+b_len, cx-b_off, cy-b_off, cx-b_off+b_len, cy-b_off, fill=color, width=2)
-        self.canvas.create_line(cx+b_off-b_len, cy-b_off, cx+b_off, cy-b_off, cx+b_off, cy-b_off+b_len, fill=color, width=2)
-        self.canvas.create_line(cx-b_off, cy+b_off-b_len, cx-b_off, cy+b_off, cx-b_off+b_len, cy+b_off, fill=color, width=2)
-        self.canvas.create_line(cx+b_off-b_len, cy+b_off, cx+b_off, cy+b_off, cx+b_off, cy+b_off-b_len, fill=color, width=2)
 
     def animate(self):
         self.angle_1 = (self.angle_1 + 1) % 360
@@ -429,9 +333,5 @@ class NexusUI(ctk.CTk):
 if __name__ == "__main__":
     app = NexusUI()
     core = NexusCore(app)
-    
-    # Run Core Logic in separate thread
-    logic_thread = threading.Thread(target=core.run_loop, daemon=True)
-    logic_thread.start()
-    
+    threading.Thread(target=core.run, daemon=True).start()
     app.mainloop()
