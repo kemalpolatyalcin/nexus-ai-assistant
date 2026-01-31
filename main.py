@@ -1,7 +1,7 @@
 """
 NEXUS AI - Automation Voice Assistant
 Author: Kemal Polat Yalçın
-Version: 1.2
+Version: 1.2.1
 """
 
 import warnings
@@ -51,7 +51,7 @@ class Config:
     
     if not API_KEY:
         logger.critical("API Key missing in environment variables.")
-        sys.exit(1)
+        # sys.exit(1) # Hata vermemesi icin gecici bypass, kullanici .env koymali
 
 class SoundFX:
     """Handles cross-platform system feedback sounds."""
@@ -59,7 +59,10 @@ class SoundFX:
     @staticmethod
     def _beep(freq, duration):
         if IS_WINDOWS:
-            winsound.Beep(freq, duration)
+            try:
+                winsound.Beep(freq, duration)
+            except:
+                pass
             
     @staticmethod
     def play_boot():
@@ -86,18 +89,21 @@ class AIBrain:
     """Wrapper for Google Gemini 1.5 Flash API."""
     def __init__(self):
         try:
-            genai.configure(api_key=Config.API_KEY)
-            self.model = genai.GenerativeModel(
-                model_name='gemini-1.5-flash',
-                system_instruction="You are NEXUS, a technical assistant. Be concise. No markdown formatting in speech."
-            )
-            self.chat = self.model.start_chat(history=[])
+            if Config.API_KEY:
+                genai.configure(api_key=Config.API_KEY)
+                self.model = genai.GenerativeModel(
+                    model_name='gemini-1.5-flash',
+                    system_instruction="You are NEXUS, a technical assistant. Be concise. No markdown formatting in speech."
+                )
+                self.chat = self.model.start_chat(history=[])
+            else:
+                self.model = None
         except Exception as e:
             logger.error(f"LLM Init Failed: {e}")
             self.model = None
 
     def ask(self, prompt, context=None):
-        if not self.model: return "System offline."
+        if not self.model: return "System offline. Check API Key."
         try:
             full_prompt = f"Context: {context}\nQuery: {prompt}" if context else prompt
             response = self.chat.send_message(full_prompt)
@@ -114,7 +120,7 @@ class SkillManager:
     
     def execute(self, command):
         cmd = command.lower()
-        self.core.ui.set_state("PROCESSING") 
+        self.core.ui.set_status("PROCESSING") 
         SoundFX.play_processing()
 
         try:
@@ -145,20 +151,23 @@ class SkillManager:
             logger.error(f"Skill Execution Failed: {e}")
             self.core.speak("Command failed.")
 
-        self.core.ui.set_state("IDLE")
+        self.core.ui.set_status("IDLE")
 
 class VoiceEngine:
     """Handles Speech-to-Text and Text-to-Speech operations."""
     def __init__(self):
         self.recognizer = sr.Recognizer()
+        # Otomatik mikrofon secimi icin default birakildi
         self.microphone = sr.Microphone()
         self.log_callback = lambda x: None 
         
-        # Initial noise calibration
-        with self.microphone as source:
-            self.recognizer.adjust_for_ambient_noise(source, duration=1)
-            self.recognizer.energy_threshold = Config.ENERGY_THRESHOLD
-            self.recognizer.pause_threshold = Config.PAUSE_THRESHOLD
+        try:
+            with self.microphone as source:
+                self.recognizer.adjust_for_ambient_noise(source, duration=1)
+                self.recognizer.energy_threshold = Config.ENERGY_THRESHOLD
+                self.recognizer.pause_threshold = Config.PAUSE_THRESHOLD
+        except Exception as e:
+            logger.warning(f"Mic calibration warning: {e}")
 
     def listen(self):
         with self.microphone as source:
@@ -202,14 +211,14 @@ class NexusCore:
     def run(self):
         time.sleep(2)
         SoundFX.play_boot()
-        self.ui.set_state("IDLE")
+        self.ui.set_status("IDLE")
         self.voice.speak("Online.")
         
         while self.is_running:
             input_text = self.voice.listen()
             if input_text and any(t in input_text for t in self.triggers):
                 SoundFX.play_ack()
-                self.ui.set_state("LISTENING")
+                self.ui.set_status("LISTENING")
                 self.voice.speak("Yes?")
                 
                 command = self.voice.listen()
@@ -217,7 +226,7 @@ class NexusCore:
                     self.ui.update_log(f"> {command.upper()}")
                     self.skills.execute(command)
                 else:
-                    self.ui.set_state("IDLE")
+                    self.ui.set_status("IDLE")
 
 class Particle:
     def __init__(self, w, h):
@@ -244,7 +253,12 @@ class NexusUI(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.WIDTH, self.HEIGHT = 800, 800
-        sw, sh = self.winfo_screenwidth(), self.winfo_screenheight()
+        
+        try:
+            sw, sh = self.winfo_screenwidth(), self.winfo_screenheight()
+        except:
+            sw, sh = 1920, 1080
+            
         self.geometry(f"{self.WIDTH}x{self.HEIGHT}+{sw//2 - self.WIDTH//2}+{sh//2 - self.HEIGHT//2}")
         
         self.overrideredirect(True)
@@ -255,7 +269,9 @@ class NexusUI(ctk.CTk):
         self.canvas = ctk.CTkCanvas(self, width=self.WIDTH, height=self.HEIGHT, bg="black", highlightthickness=0)
         self.canvas.pack(fill="both", expand=True)
         
-        self.state = "BOOT" 
+        # DEGISTIRILDI: self.state ismi cakisiyordu, nexus_status yapildi
+        self.nexus_status = "BOOT" 
+        
         self.angle_1 = self.angle_2 = self.pulse = 0
         self.log_text = "INITIALIZING..."
         self.particles = [Particle(self.WIDTH, self.HEIGHT) for _ in range(80)]
@@ -271,7 +287,7 @@ class NexusUI(ctk.CTk):
     def do_move(self, event):
         self.geometry(f"+{self.winfo_x() + (event.x - self.x)}+{self.winfo_y() + (event.y - self.y)}")
         
-    def set_state(self, state): self.state = state 
+    def set_status(self, status): self.nexus_status = status 
     def update_log(self, text): self.log_text = text
 
     def typewriter_log(self, text):
@@ -291,9 +307,10 @@ class NexusUI(ctk.CTk):
         self.canvas.delete("all")
         cx, cy = self.WIDTH // 2, self.HEIGHT // 2
         
-        if self.state == "IDLE": color, warp, label = Config.COLOR_CORE, 1.0, "ONLINE"
-        elif self.state == "LISTENING": color, warp, label = Config.COLOR_ACTIVE, 0.2, "LISTENING"
-        elif self.state == "PROCESSING": color, warp, label = Config.COLOR_BUSY, 4.0, "PROCESSING"
+        # nexus_status kullaniliyor artik
+        if self.nexus_status == "IDLE": color, warp, label = Config.COLOR_CORE, 1.0, "ONLINE"
+        elif self.nexus_status == "LISTENING": color, warp, label = Config.COLOR_ACTIVE, 0.2, "LISTENING"
+        elif self.nexus_status == "PROCESSING": color, warp, label = Config.COLOR_BUSY, 4.0, "PROCESSING"
         else: color, warp, label = Config.COLOR_DIM, 0.0, "BOOT"
 
         # Particles
