@@ -1,6 +1,6 @@
 """
 NEXUS AI - Automation Voice Assistant
-Author: Kemal Polat Yalçın
+Author: Kemal Polat Yalcin
 Version: 1.2.1
 """
 
