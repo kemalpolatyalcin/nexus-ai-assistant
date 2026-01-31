@@ -3,6 +3,6 @@ SpeechRecognition
 pygame
 edge-tts
 google-generativeai
-python-dotenv
 pyperclip
+python-dotenv
 pyaudio
