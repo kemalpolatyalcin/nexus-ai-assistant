@@ -1,51 +1,74 @@
-# NEXUS AI - Intelligent Voice Assistant (v1.0)
+# 🎙️ NEXUS AI - Intelligent Voice Automation System
 
-![Python](https://img.shields.io/badge/Python-3.11-blue?style=for-the-badge&logo=python)
-![AI](https://img.shields.io/badge/AI-Gemini%20Pro-orange?style=for-the-badge)
-![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-Active-success)
+![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
+![AI](https://img.shields.io/badge/Model-Gemini%201.5%20Flash-orange)
 
-**NEXUS** is an advanced, voice-activated AI assistant designed with a focus on **Object-Oriented Programming (OOP)** and **Holographic UI Design**. Built using Python and Google's Gemini LLM, it serves as a robust template for scalable AI applications.
+## 📖 Overview
+**NEXUS** is a modular, voice-activated automation assistant designed to bridge the gap between natural language processing (NLP) and system-level control. Built with **Python** and powered by **Google's Gemini LLM**, it functions as a "hands-free" interface for complex workflows.
 
-## 🚀 Features
+Unlike standard voice assistants, NEXUS features a **transparent, sci-fi inspired HUD** (Heads-Up Display) and is engineered for **low-latency execution** of system commands, clipboard analysis, and real-time information retrieval.
 
-* **🧠 Advanced AI Brain:** Powered by Google Gemini 1.5 Flash via secure API integration.
-* **🎨 Holographic HUD:** Custom 3D particle system built from scratch using `CustomTkinter` and Geometry logic.
-* **🔊 Voice Interaction:** Multi-threaded speech recognition and neural TTS (Text-to-Speech) for seamless communication.
-* **🛡️ Secure Architecture:** Environment variable based security (`.env`) for API key protection.
-* **⚙️ Modular Design:** Clean OOP structure with separate classes for `VoiceEngine`, `AIBrain`, and `UI`.
+## ✨ Core Architecture
 
-## 🛠️ Installation
+### 🧠 Cognitive Engine (The Brain)
+- **LLM Integration:** Utilizes `google.generativeai` (Gemini 1.5) for context-aware reasoning.
+- **Context Handling:** Maintains short-term memory of the conversation for fluid interactions.
+- **Clipboard Analysis:** Can read, analyze, and summarize clipboard content instantly upon command.
 
-1.  **Clone the repository:**
+### 🗣️ Voice I/O (The Interface)
+- **Neural TTS:** Implements `edge-tts` for natural, human-like speech synthesis.
+- **Adaptive Listening:** Uses `SpeechRecognition` with dynamic noise threshold adjustment for varied environments.
+- **Asynchronous Processing:** Non-blocking audio feedback loop using `asyncio` and `threading`.
+
+### 💻 System Control (The Hands)
+- **Automation:** Executes shell commands, launches applications (VS Code, Terminal), and manages system states.
+- **Cross-Platform:** Designed with compatibility for Windows and macOS environments.
+
+## 🛠️ Tech Stack
+
+| Component | Technology |
+|-----------|------------|
+| **Core Logic** | Python 3.10+ |
+| **AI Model** | Google Gemini 1.5 Flash |
+| **GUI Framework** | CustomTkinter (Modern UI) |
+| **Speech-to-Text** | Google Speech Recognition |
+| **Text-to-Speech** | Edge-TTS (Neural) |
+| **Audio Engine** | Pygame Mixer |
+
+## 🚀 Installation & Setup
+
+1.  **Clone the Repository:**
     ```bash
-    git clone [https://github.com/YOUR_USERNAME/nexus-ai-assistant.git](https://github.com/YOUR_USERNAME/nexus-ai-assistant.git)
+    git clone [https://github.com/kemalpolatyalcin/nexus-ai-assistant.git](https://github.com/kemalpolatyalcin/nexus-ai-assistant.git)
     cd nexus-ai-assistant
     ```
 
-2.  **Install dependencies:**
+2.  **Install Dependencies:**
     ```bash
     pip install -r requirements.txt
     ```
 
-3.  **Setup Security:**
+3.  **Environment Configuration:**
     Create a `.env` file in the root directory and add your API key:
     ```env
-    GEMINI_API_KEY=your_google_api_key_here
+    GOOGLE_API_KEY=your_gemini_api_key_here
     ```
 
 4.  **Run the System:**
-    Double-click `START.bat` or run:
     ```bash
     python main.py
     ```
 
-## 🧩 Technologies Used
+## 🖥️ Usage Examples
+- *"Nexus, open VS Code and start a new project."*
+- *"Analyze the text in my clipboard."*
+- *"System status report."*
 
-* **Python 3.11**
-* **CustomTkinter** (Modern UI)
-* **Google Generative AI** (LLM)
-* **SpeechRecognition & Edge-TTS**
-* **Pygame & Winsound** (Audio/SFX)
+## 👨‍💻 Author
+**Kemal Polat Yalçın**
+- *IT Student @ EMU*
+- *Focus: AI Automation & Human-Computer Interaction*
 
 ---
-*Developed by Kemal for Technical Portfolio.*
+*Disclaimer: This project is an open-source prototype demonstrating LLM integration in desktop automation.*
