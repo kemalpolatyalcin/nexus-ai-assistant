@@ -66,7 +66,7 @@ Unlike standard voice assistants, NEXUS features a **transparent, sci-fi inspire
 - *"System status report."*
 
 ## 👨‍💻 Author
-**Kemal Polat Yalçın**
+**Kemal Polat Yalcin**
 - *IT Student @ EMU*
 - *Focus: AI Automation & Human-Computer Interaction*
 
